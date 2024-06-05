@@ -7,15 +7,15 @@
         "forwarder",
         "userbot"
     ],
-    "repository": "https://github.com/AbirHasan2005/Forward-Client",
-    "website": "https://telegram.dog/AbirHasan2005",
-    "success_url": "https://t.me/Discovery_Updates",
+    "repository": "https://github.com/shadoworbs/Forward-Client",
+    "website": "https://telegram.dog/shadoworbs",
+    "success_url": "https://t.me/pyrotestrobot",
     "env": {
         "API_ID": {
-            "description": "Get this value from my.telegram.org or @TeleORG_Bot"
+            "description": "Get this value from my.telegram.org"
         },
         "API_HASH": {
-            "description": "Get this value from my.telegram.org or @TeleORG_Bot"
+            "description": "Get this value from my.telegram.org"
         },
         "STRING_SESSION": {
             "description": "Get this from @StringSessionGen_Bot"

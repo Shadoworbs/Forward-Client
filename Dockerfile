@@ -12,7 +12,6 @@ RUN apt -qq install -y --no-install-recommends \
     git \
     gnupg2 \
     wget \
-
 RUN set -ex; \
     apt-get update \
     && apt-get install -y --no-install-recommends \
