@@ -16,11 +16,10 @@ RUN = {"isRunning": True}
 WAITING_FOR_INPUT = {}  # Store user states
 
 User = Client(
-    name="pyrogram",
+    name="forwarder_userbot",
     api_hash=Config.API_HASH,
     api_id=Config.API_ID,
-    in_memory=True,
-    session_string=Config.STRING_SESSION,
+    bot_token=Config.BOT_TOKEN,
 )
 
 # Initialize settings for current user
