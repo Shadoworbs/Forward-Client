@@ -48,7 +48,7 @@ async def Kanger(c: Client, m: Message):
             chat_member = await c.get_chat_member(
                 chat_id=chat_id, user_id=(await c.get_me()).id
             )
-            if not chat_member.can_send_messages:
+            if not chat_member.status in ["member", "administrator"]:
                 await m.edit(
                     text=f"❌ No permission to send messages in chat `{chat_id}`!"
                 )
