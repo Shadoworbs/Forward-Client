@@ -6,16 +6,16 @@ from http import HTTPStatus
 
 
 async def FilterMessage(message: Message):
-    # Using new forward_origin properties
-    has_forward = bool(
-        message.forward_origin
-        and (message.forward_origin.sender_user or message.forward_origin.sender_chat)
-    )
-    if has_forward and ("forwarded" not in Config.FORWARD_FILTERS):
-        await message.reply(
-            "⚠️ Forwarded messages are not allowed in this chat. Please send original messages."
-        )
-        return HTTPStatus.BAD_REQUEST
+    # # Using new forward_origin properties
+    # has_forward = bool(
+    #     message.forward_origin
+    #     and (message.forward_origin.sender_user or message.forward_origin.sender_chat)
+    # )
+    # if has_forward and ("forwarded" not in Config.FORWARD_FILTERS):
+    #     await message.reply(
+    #         "⚠️ Forwarded messages are not allowed in this chat. Please send original messages."
+    #     )
+    #     return HTTPStatus.BAD_REQUEST
 
     # Rest of the filters
     if (Config.FORWARD_FILTERS.lower() == "all") or (
