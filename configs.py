@@ -27,9 +27,7 @@ class Config(object):
     # Sleep Time while Kang
     SLEEP_TIME = int(os.environ.get("SLEEP_TIME", 10))
     # Message Texts
-    HELP_TEXT = os.environ.get(
-        "HELP_TEXT",
-        """
+    HELP_TEXT = """
 This UserBot can forward messages from any Chat to any other Chat also you can kang all messages from one Chat to another Chat.
 
 👨🏻‍💻 **Commands:**
@@ -43,5 +41,4 @@ This UserBot can forward messages from any Chat to any other Chat also you can k
 • `/forward` or `/fwd` - Forward a single message.
 
 ©️ **Developer:** @shadoworbs
-👥 **Support Group:** [【★ʟя★】](https://t.me/pyrotestrobot)""",
-    )
+👥 **Support Group:** [【★ʟя★】](https://t.me/pyrotestrobot)"""
