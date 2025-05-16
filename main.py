@@ -275,6 +275,10 @@ async def reset_settings(client: Client, message: Message):
 )
 async def handle_chat_id_input(client: Client, message: Message):
     """Handle chat ID input from users"""
+    if not message.from_user:
+        await message.reply("❌ Cannot process anonymous messages!")
+        return
+
     user_id = message.from_user.id
     state, is_expired = await get_user_state(user_id)
     settings = await initialize_settings(user_id)
@@ -328,6 +332,11 @@ async def handle_chat_id_input(client: Client, message: Message):
 async def forward_command(client: Client, message: Message):
     """Handle forward command - forwards a single message"""
     try:
+        # Check for anonymous messages
+        if not message.from_user:
+            await message.reply("❌ Cannot process anonymous messages!")
+            return
+
         # Initialize settings
         settings = await initialize_settings(message.from_user.id)
 
