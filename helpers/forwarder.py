@@ -1,5 +1,8 @@
 import asyncio
+from http import HTTPStatus
 from typing import Optional, Union, List
+
+from httpx import HTTPStatusError
 from configs import Config
 from pyrogram.client import Client
 from pyrogram.types import Message
@@ -51,33 +54,33 @@ async def ForwardMessage(
             return True
 
         # --- Validation Checks --- #
-        checks = [
-            (await FilterMessage(message=msg), "Message type not allowed in filters"),
-            (
-                await CheckBlockedExt(event=msg) if msg.media else False,
-                "File extension is blocked",
-            ),
-            (
-                await CheckFileSize(msg=msg) if msg.media else False,
-                "File size below minimum requirement",
-            ),
-        ]
+        # checks = [
+        #     (await FilterMessage(message=msg), "Message type not allowed in filters"),
+        #     (
+        #         await CheckBlockedExt(event=msg) if msg.media else False,
+        #         "File extension is blocked",
+        #     ),
+        #     (
+        #         await CheckFileSize(msg=msg) if msg.media else False,
+        #         "File size below minimum requirement",
+        #     ),
+        # ]
 
-        for check_func, error_msg in checks:
-            try:
-                result = await check_func
-                if isinstance(result, bool) and result is True:
-                    if not silent:
-                        await client.send_message(
-                            "me", f"⚠️ Skipping message: {error_msg}"
-                        )
-                    return 400
-                elif result == 400:
-                    return 400
-            except Exception as e:
-                if not silent:
-                    await client.send_message("me", f"⚠️ Validation error: {str(e)}")
-                continue  # Skip this check if it fails
+        # for check_func, error_msg in checks:
+        # try:
+        #     result = await check_func
+        #     if isinstance(result, bool) and result is True:
+        #         if not silent:
+        #             await client.send_message(
+        #                 "me", f"⚠️ Skipping message: {error_msg}"
+        #             )
+        #         return 400
+        #     elif result == 400:
+        #         return 400
+        # except Exception as e:
+        #     if not silent:
+        #         await client.send_message("me", f"⚠️ Validation error: {str(e)}")
+            # continue  # Skip this check if it fails
 
         # --- Forward to Each Chat --- #
         for chat_id in to_chat_ids:
@@ -105,7 +108,7 @@ async def ForwardMessage(
 
                     # Forward the message
                     await msg.forward(chat_id=chat_id, disable_notification=True)
-                    await asyncio.sleep(0.5)  # Small delay between forwards
+                    await asyncio.sleep(0.7)  # Small delay between forwards
                     break  # Success, exit retry loop
 
                 except MessageIdInvalid:
@@ -113,7 +116,7 @@ async def ForwardMessage(
                         await client.send_message(
                             chat_id="me", text="⚠️ Message no longer available"
                         )
-                    return 400
+                    return HTTPStatus.BAD_REQUEST
 
                 except FloodWait as e:
                     if retry_count == max_retries - 1:
@@ -159,6 +162,7 @@ async def ForwardAllMessages(
     """
     try:
         chunk_size = 100
+        chunks_sent = 0
         messages_forwarded = 0
         failed_messages = 0
 
@@ -174,7 +178,14 @@ async def ForwardAllMessages(
             )
             return False
 
-        async for message in client.get_chat_history(from_chat_id):
+        async for message in client.get_chat_history(from_chat_id, 
+                                                     limit=chunk_size,
+                                                     reverse=True,
+                                                     offset_id=0):
+            # Skip if message is empty or a service message
+            if message.empty or message.service:
+                continue
+            # Check if message is a forward
             if messages_forwarded % chunk_size == 0:
                 # Update progress every chunk
                 await progress_message.edit_text(
@@ -195,6 +206,13 @@ async def ForwardAllMessages(
             except Exception as e:
                 failed_messages += 1
                 continue
+            finally:
+                chunks_sent += 1
+                if chunks_sent >= chunk_size:
+                    chunks_sent = 0
+                    await asyncio.sleep(2)  # Pause between chunks
+                else:
+                    await asyncio.sleep(0.7)  # Small delay between forwards
 
         # Final progress update
         await progress_message.edit_text(
