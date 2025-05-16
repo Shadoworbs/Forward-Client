@@ -5,10 +5,15 @@ from pyrogram.types import Message
 
 
 async def FilterMessage(message: Message):
-    if (message.forward_from or message.forward_from_chat) and (
-        "forwarded" not in Config.FORWARD_FILTERS
-    ):
+    # Using new forward_origin properties
+    has_forward = bool(
+        message.forward_origin
+        and (message.forward_origin.sender_user or message.forward_origin.sender_chat)
+    )
+    if has_forward and ("forwarded" not in Config.FORWARD_FILTERS):
         return 400
+
+    # Rest of the filters
     if (len(Config.FORWARD_FILTERS) == 9) or (
         (message.video and ("video" in Config.FORWARD_FILTERS))
         or (message.document and ("document" in Config.FORWARD_FILTERS))

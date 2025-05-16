@@ -54,11 +54,11 @@ async def ForwardMessage(
         checks = [
             (FilterMessage(message=msg), "Message type not allowed in filters"),
             (
-                CheckBlockedExt(event=msg) if msg.media else False,
+                await CheckBlockedExt(event=msg) if msg.media else False,
                 "File extension is blocked",
             ),
             (
-                CheckFileSize(msg=msg) if msg.media else False,
+                await CheckFileSize(msg=msg) if msg.media else False,
                 "File size below minimum requirement",
             ),
         ]
@@ -90,7 +90,7 @@ async def ForwardMessage(
                     try:
                         chat = await client.get_chat(chat_id)
                         member = await chat.get_member("me")
-                        if not member.can_send_messages:
+                        if not member.permissions.can_send_messages:
                             await client.send_message(
                                 chat_id="me",
                                 text=f"⛔️ No permission to send messages in {chat.title}",
