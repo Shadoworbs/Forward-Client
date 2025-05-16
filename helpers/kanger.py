@@ -10,13 +10,13 @@ from helpers.forwarder import ForwardMessage, ForwardAllMessages
 
 async def Kanger(c: Client, m: Message):
     await m.edit(
-        text=f"🔍 Checking source chat `{str(Config.FORWARD_FROM_CHAT_ID[0])}` ..."
+        text=f"🔍 Checking source chat `{str(Config.FORWARD_FROM_CHAT_ID)}` ..."
     )
     await asyncio.sleep(2)
 
     try:
         # Verify source chat
-        ForwardFromChat = await c.get_chat(chat_id=Config.FORWARD_FROM_CHAT_ID[0])
+        ForwardFromChat = await c.get_chat(chat_id=Config.FORWARD_FROM_CHAT_ID)
         await m.edit(
             text=f"✅ Successfully connected to source chat `{ForwardFromChat.title}`!"
         )
