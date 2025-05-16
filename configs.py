@@ -13,23 +13,13 @@ class Config(object):
     STRING_SESSION = os.environ.get("STRING_SESSION", None)
     # Get This From @BotFather
     BOT_TOKEN = os.environ.get("BOT_TOKEN", None)
-    # Forward From Chat ID
-    FORWARD_FROM_CHAT_ID = [
-        int(x.strip())
-        for x in os.environ.get("FORWARD_FROM_CHAT_ID")
-    ]
-    # Forward To Chat ID
-    FORWARD_TO_CHAT_ID = [
-        int(x.strip()) for x in os.environ.get("FORWARD_TO_CHAT_ID")
-    ]
+
     # Filters for Forwards
     DEFAULT_FILTERS = os.environ.get("DEFAULT_FILTERS", "video document")
     FORWARD_FILTERS = list(
         set(x for x in os.environ.get("FORWARD_FILTERS", DEFAULT_FILTERS).split())
     )
-    BLOCKED_EXTENSIONS = [
-        x.strip() for x in os.environ.get("BLOCKED_EXTENSIONS", "")
-    ]
+    BLOCKED_EXTENSIONS = [x.strip() for x in os.environ.get("BLOCKED_EXTENSIONS", "")]
     MINIMUM_FILE_SIZE = os.environ.get("MINIMUM_FILE_SIZE", None)
     BLOCK_FILES_WITHOUT_EXTENSIONS = bool(
         os.environ.get("BLOCK_FILES_WITHOUT_EXTENSIONS", False)
@@ -49,6 +39,10 @@ This UserBot can forward messages from any Chat to any other Chat also you can k
 • `/help` - Get this Message.
 • `/kang` - Start All Messages Kanger.
 • `/stop` - Stop Kanger & Restart Service.
+• `/settings` - Configure forwarding settings.
+• `/vs` - View current settings.
+• `/rs` - Reset settings.
+• `/forward` or `/fwd` - Forward a single message.
 
 ©️ **Developer:** @shadoworbs
 👥 **Support Group:** [【★ʟя★】](https://t.me/pyrotestrobot)""",

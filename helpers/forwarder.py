@@ -14,10 +14,11 @@ from pyrogram.errors import (
 from helpers.filters import FilterMessage
 from helpers.file_size_checker import CheckFileSize
 from helpers.block_exts_handler import CheckBlockedExt
+from helpers.settings_manager import UserSettings
 
 
 async def ForwardMessage(
-    client: Client, msg: Message, silent: bool = False
+    client: Client, msg: Message, to_chat_ids: List[int] = None, silent: bool = False
 ) -> Union[int, bool]:
     """
     Forward a message to configured destination chats with advanced error handling and rate limiting
@@ -25,12 +26,26 @@ async def ForwardMessage(
     Args:
         client: The Pyrogram client instance
         msg: The message to forward
+        to_chat_ids: Optional list of destination chat IDs. If not provided, will use user settings
         silent: If True, suppresses non-critical error messages
 
     Returns:
         400 on validation failure, True on success
     """
     try:
+        # Get user settings if to_chat_ids not provided
+        if to_chat_ids is None:
+            if not msg.from_user:
+                return 400
+            settings = UserSettings(msg.from_user.id)
+            if not settings.has_required_settings():
+                if not silent:
+                    await msg.reply(
+                        "⚠️ Please configure your forwarding settings first using /settings"
+                    )
+                return 400
+            to_chat_ids = settings.get_forward_to()
+
         # Skip validation for system messages and service notifications
         if msg.service or msg.empty:
             return True
@@ -65,7 +80,7 @@ async def ForwardMessage(
                 continue  # Skip this check if it fails
 
         # --- Forward to Each Chat --- #
-        for chat_id in Config.FORWARD_TO_CHAT_ID:
+        for chat_id in to_chat_ids:
             max_retries = 3
             retry_count = 0
 
@@ -88,17 +103,17 @@ async def ForwardMessage(
                         )
                         continue
 
-                    # Forward the message with progress tracking if media
-                    try:
-                        await msg.forward(chat_id=chat_id, disable_notification=True)
-                        await asyncio.sleep(0.5)  # Small delay between forwards
-                        break  # Success, exit retry loop
-                    except MessageIdInvalid:
-                        if not silent:
-                            await client.send_message(
-                                chat_id="me", text="⚠️ Message no longer available"
-                            )
-                        return 400
+                    # Forward the message
+                    await msg.forward(chat_id=chat_id, disable_notification=True)
+                    await asyncio.sleep(0.5)  # Small delay between forwards
+                    break  # Success, exit retry loop
+
+                except MessageIdInvalid:
+                    if not silent:
+                        await client.send_message(
+                            chat_id="me", text="⚠️ Message no longer available"
+                        )
+                    return 400
 
                 except FloodWait as e:
                     if retry_count == max_retries - 1:
@@ -107,26 +122,26 @@ async def ForwardMessage(
                             text=f"⚠️ FloodWait: Waiting {e.value} seconds for chat {chat_id}",
                         )
                         await asyncio.sleep(e.value)
-                        retry_count += 1
-                        continue
                     else:
                         await asyncio.sleep(e.value)
-                        retry_count += 1
-                        continue
+                    retry_count += 1
+                    continue
 
                 except Exception as e:
-                    await client.send_message(
-                        chat_id="me",
-                        text=f"❌ Error forwarding to {chat_id}:\n`{str(e)}`",
-                    )
+                    if not silent:
+                        await client.send_message(
+                            chat_id="me",
+                            text=f"❌ Error forwarding to {chat_id}:\n`{str(e)}`",
+                        )
                     break
 
         return True
 
     except Exception as e:
-        await client.send_message(
-            chat_id="me", text=f"❌ Unexpected error:\n`{str(e)}`"
-        )
+        if not silent:
+            await client.send_message(
+                chat_id="me", text=f"❌ Unexpected error:\n`{str(e)}`"
+            )
         return 400
 
 
@@ -170,7 +185,9 @@ async def ForwardAllMessages(
                 await asyncio.sleep(2)  # Pause between chunks
 
             try:
-                result = await ForwardMessage(client, message, silent=True)
+                result = await ForwardMessage(
+                    client, message, to_chat_ids=to_chat_ids, silent=True
+                )
                 if result == 400:
                     failed_messages += 1
                 else:
