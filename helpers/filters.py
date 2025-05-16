@@ -1,4 +1,4 @@
-# (c) @AbirHasan2005
+# (c) @Shadoworbs
 
 from configs import Config
 from pyrogram.types import Message
@@ -14,7 +14,7 @@ async def FilterMessage(message: Message):
         return 400
 
     # Rest of the filters
-    if (len(Config.FORWARD_FILTERS) == 9) or (
+    if (len(Config.FORWARD_FILTERS.lower()) == "all") or (
         (message.video and ("video" in Config.FORWARD_FILTERS))
         or (message.document and ("document" in Config.FORWARD_FILTERS))
         or (message.photo and ("photo" in Config.FORWARD_FILTERS))

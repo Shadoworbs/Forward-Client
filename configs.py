@@ -15,10 +15,8 @@ class Config(object):
     BOT_TOKEN = os.environ.get("BOT_TOKEN", None)
 
     # Filters for Forwards
-    DEFAULT_FILTERS = os.environ.get("DEFAULT_FILTERS", "")
-    FORWARD_FILTERS = list(
-        set(x for x in os.environ.get("FORWARD_FILTERS", DEFAULT_FILTERS).split())
-    )
+    DEFAULT_FILTERS: str = os.environ.get("DEFAULT_FILTERS", "")
+    FORWARD_FILTERS: str = os.environ.get("FORWARD_FILTERS", "")
     BLOCKED_EXTENSIONS = [x.strip() for x in os.environ.get("BLOCKED_EXTENSIONS", "")]
     MINIMUM_FILE_SIZE = os.environ.get("MINIMUM_FILE_SIZE", None)
     BLOCK_FILES_WITHOUT_EXTENSIONS = bool(

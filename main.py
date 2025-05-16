@@ -1,4 +1,4 @@
-# (c) @AbirHasan2005 | Thomas Shelby
+# (c) @Shadoworbs | Shadoworbs
 # This is Telegram Messages Forwarder UserBot!
 # Use this at your own risk. I will not be responsible for any kind of issue while using this!
 
@@ -226,11 +226,15 @@ async def handle_kang_stop(client: Client, message: Message):
 
     # Continue with original command logic...
     if message.command[0].lower() == "kang":
-        if RUN["isRunning"]:
-            await message.edit_text("Already Running ...")
-        else:
-            RUN["isRunning"] = True
-            await Kanger(c=client, m=message)
+        try:
+            if RUN["isRunning"]:
+                await message.edit_text("Already Running ...")
+            else:
+                RUN["isRunning"] = True
+                await Kanger(c=client, m=message)
+        except KeyboardInterrupt:
+            await message.edit_text("Stopping Kang operation...")
+            RUN["isRunning"] = False
     else:  # stop command
         RUN["isRunning"] = False
         await message.edit_text("Stopped Successfully!")
