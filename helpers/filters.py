@@ -2,6 +2,7 @@
 
 from configs import Config
 from pyrogram.types import Message
+from http import HTTPStatus
 
 
 async def FilterMessage(message: Message):
@@ -11,10 +12,13 @@ async def FilterMessage(message: Message):
         and (message.forward_origin.sender_user or message.forward_origin.sender_chat)
     )
     if has_forward and ("forwarded" not in Config.FORWARD_FILTERS):
-        return 400
+        await message.reply(
+            "⚠️ Forwarded messages are not allowed in this chat. Please send original messages."
+        )
+        return HTTPStatus.BAD_REQUEST
 
     # Rest of the filters
-    if (len(Config.FORWARD_FILTERS.lower()) == "all") or (
+    if (Config.FORWARD_FILTERS.lower() == "all") or (
         (message.video and ("video" in Config.FORWARD_FILTERS))
         or (message.document and ("document" in Config.FORWARD_FILTERS))
         or (message.photo and ("photo" in Config.FORWARD_FILTERS))
@@ -24,6 +28,6 @@ async def FilterMessage(message: Message):
         or (message.poll and ("poll" in Config.FORWARD_FILTERS))
         or (message.sticker and ("sticker" in Config.FORWARD_FILTERS))
     ):
-        return 200
+        return HTTPStatus.OK
     else:
-        return 400
+        return HTTPStatus.BAD_REQUEST
