@@ -4,16 +4,38 @@
 
 from pyrogram.client import Client
 from pyrogram import filters
-from pyrogram.types import Message, CallbackQuery
+from pyrogram.types import Message
 from pyrogram.errors import FloodWait
 from configs import Config
 from helpers.kanger import Kanger
 from helpers.forwarder import ForwardMessage
 from helpers.settings_manager import UserSettings
-from helpers.keyboard_manager import KeyboardManager
+from enum import Enum, auto
+import time
+from typing import Dict, Optional, Tuple
+import asyncio
+
+
+class InputState(Enum):
+    FORWARD_FROM = auto()
+    FORWARD_TO = auto()
+    NONE = auto()
+
+
+class UserState:
+    def __init__(self, state: InputState = InputState.NONE):
+        self.state = state
+        self.timestamp = time.time()
+
+    def is_expired(self, timeout_seconds: int = 300) -> bool:
+        return (time.time() - self.timestamp) > timeout_seconds
+
+
+# Dictionary to store user states
+USER_STATES: Dict[int, UserState] = {}
 
 RUN = {"isRunning": True}
-WAITING_FOR_INPUT = {}  # Store user states
+WAITING_FOR = {}  # Store what kind of input we're waiting for from each user
 
 User = Client(
     name="forwarder_userbot",
@@ -22,205 +44,225 @@ User = Client(
     bot_token=Config.BOT_TOKEN,
 )
 
-# Initialize settings for current user
-user_settings = None
+# Dictionary to store user settings
+user_settings_dict = {}
 
 
-async def initialize_settings(user_id: int):
-    global user_settings
-    user_settings = UserSettings(user_id)
-    # Update Config with user settings
-    Config.FORWARD_FROM_CHAT_ID = user_settings.get_forward_from()
-    Config.FORWARD_TO_CHAT_ID = user_settings.get_forward_to()
+async def initialize_settings(user_id: int) -> UserSettings:
+    """Initialize or get existing settings for a user"""
+    if user_id not in user_settings_dict:
+        settings = UserSettings(user_id)
+        user_settings_dict[user_id] = settings
+        # Update Config with user settings
+        Config.FORWARD_FROM_CHAT_ID = settings.get_forward_from()
+        Config.FORWARD_TO_CHAT_ID = settings.get_forward_to()
+    return user_settings_dict[user_id]
 
 
-@User.on_message(filters.text | filters.media)
-async def main(client: Client, message: Message):
-    global user_settings
+async def handle_settings_prompt(message: Message, settings: UserSettings):
+    """Handle settings prompts for users"""
+    user_id = message.from_user.id
 
-    if not user_settings and message.from_user:
-        await initialize_settings(message.from_user.id)
+    if user_id in WAITING_FOR:
+        prompt_type = WAITING_FOR[user_id]
+        chat_id = message.text
 
-    if (-100 in Config.FORWARD_TO_CHAT_ID) or (-100 in Config.FORWARD_FROM_CHAT_ID):
+        # Handle cancel command
+        if chat_id.lower() == "cancel":
+            del WAITING_FOR[user_id]
+            await message.reply("❌ Settings update cancelled.")
+            return
+
+        # Validate the chat ID
+        is_valid, cleaned_id = settings.validate_chat_id(chat_id)
+        if not is_valid:
+            await message.reply(
+                "⚠️ Invalid chat ID format. Please send a valid chat ID or 'cancel' to stop."
+            )
+            return
+
+        # Add the chat ID based on what we're waiting for
+        if prompt_type == "forward_from":
+            settings.add_forward_from(cleaned_id)
+            remaining = "destination"
+            next_prompt = "forward_to"
+        else:  # forward_to
+            settings.add_forward_to(cleaned_id)
+            del WAITING_FOR[user_id]
+            await message.reply(
+                "✅ Settings have been updated successfully!\n\nUse /start to see available commands."
+            )
+            return
+
+        # Update waiting state and send next prompt
+        WAITING_FOR[user_id] = next_prompt
+        await message.reply(
+            f"✅ Source chat ID saved! Now send me the {remaining} chat ID or 'cancel' to stop."
+        )
         return
 
-    if (message.text == "/start") and message.from_user.is_self:
-        if not RUN["isRunning"]:
+
+def check_settings_text(settings: UserSettings):
+    """Generate text to remind user about missing settings"""
+    if not settings.has_required_settings():
+        return "\n\n⚠️ Your forwarding settings are not configured. Use /settings to set them up."
+    return ""
+
+
+async def check_settings_required(message: Message, settings: UserSettings) -> bool:
+    """Check if settings are configured and notify user if not"""
+    if not settings.has_required_settings():
+        await message.reply(
+            "⚠️ You need to configure forwarding settings first!\n"
+            "Use /settings or /bs to configure source and destination chats.\n\n"
+            "Your original command will work once settings are configured."
+        )
+        return False
+    return True
+
+
+@User.on_message(filters.command(["start", "help"]))
+async def start_command(client: Client, message: Message):
+    """Handle start and help commands"""
+    settings = await initialize_settings(message.from_user.id)
+
+    response = Config.HELP_TEXT
+    if not settings.has_required_settings():
+        response += "\n\n⚠️ Note: Please configure your forwarding settings using /settings or /bs first!"
+
+    await message.reply(response)
+
+
+@User.on_message(filters.command(["settings", "bs", "botsettings"]))
+async def settings_command(client: Client, message: Message):
+    """Handle settings command"""
+    user_id = message.from_user.id
+    settings = await initialize_settings(user_id)
+
+    state, is_expired = await get_user_state(user_id)
+
+    if is_expired:
+        await message.reply("Previous settings session expired. Starting new session.")
+
+    if state != InputState.NONE:
+        await message.reply(
+            "You have a settings session in progress. Send 'cancel' to start over."
+        )
+        return
+
+    current_settings = (
+        "Current Settings:\n"
+        f"Source Chats: {', '.join(map(str, settings.get_forward_from()))}\n"
+        f"Destination Chats: {', '.join(map(str, settings.get_forward_to()))}\n\n"
+        "Send a source chat ID to start configuration, or 'cancel' to exit."
+    )
+
+    await message.reply(current_settings)
+    await set_user_state(user_id, InputState.FORWARD_FROM)
+
+
+@User.on_message(filters.command(["kang", "stop"]))
+async def handle_kang_stop(client: Client, message: Message):
+    settings = await initialize_settings(message.from_user.id)
+
+    if not settings.has_required_settings():
+        await message.reply(
+            "⚠️ You need to configure your forwarding settings first!\n"
+            "Use /settings to set up the source and destination chats."
+        )
+        return
+
+    # Continue with original command logic...
+    if message.command[0].lower() == "kang":
+        if RUN["isRunning"]:
+            await message.edit_text("Already Running ...")
+        else:
             RUN["isRunning"] = True
-        await message.edit(
-            text=f"Hi, **{message.from_user.first_name}**!\nThis is a Forwarder Userbot by @shadoworbs\n\nUse /bs or /botsettings to configure forwarding settings.",
-            disable_web_page_preview=True,
-        )
-
-    elif (message.text in ["/bs", "/botsettings"]) and message.from_user.is_self:
-        await message.edit(
-            "🛠 **Bot Settings**\n\nUse the buttons below to configure forwarding settings:",
-            reply_markup=KeyboardManager.settings_menu(),
-        )
-
-    elif (message.text == "/stop") and message.from_user.is_self:
+            await Kanger(c=client, m=message)
+    else:  # stop command
         RUN["isRunning"] = False
-        return await message.edit(
-            "Userbot Stopped!\n\nSend `/start` to start userbot again."
+        await message.edit_text("Stopped Successfully!")
+
+
+@User.on_message(
+    ~filters.command(["start", "help", "settings", "bs", "botsettings", "kang", "stop"])
+    & filters.text
+)
+async def handle_chat_id_input(client: Client, message: Message):
+    """Handle chat ID input from users"""
+    user_id = message.from_user.id
+    state, is_expired = await get_user_state(user_id)
+    settings = await initialize_settings(user_id)
+
+    if is_expired:
+        await message.reply(
+            "Settings session expired. Please use /settings to start over."
         )
+        return
 
-    elif (message.text == "/help") and message.from_user.is_self and RUN["isRunning"]:
-        await message.edit(text=Config.HELP_TEXT, disable_web_page_preview=True)
+    if state == InputState.NONE:
+        return
 
-    elif (
-        (message.text == "/forward") and message.from_user.is_self and RUN["isRunning"]
-    ):
-        await Kanger(c=client, m=message)
+    chat_id = message.text.strip()
+    validation_result = settings.validate_chat_id(chat_id)
 
-    elif message.chat.id in Config.FORWARD_FROM_CHAT_ID and RUN["isRunning"]:
-        await ForwardMessage(client, message)
+    if not validation_result.is_valid:
+        if validation_result.error_message == "Operation cancelled":
+            await clear_user_state(user_id)
+            await message.reply("Settings configuration cancelled.")
+            return
 
-    # Handle chat ID input when waiting for it
-    elif (
-        message.from_user.is_self
-        and message.text
-        and message.text.startswith("-100")
-        and message.from_user.id in WAITING_FOR_INPUT
-    ):
-        input_type = WAITING_FOR_INPUT[message.from_user.id]
-        chat_id = int(message.text)
+        await message.reply(
+            f"❌ {validation_result.error_message}\nPlease try again or send 'cancel' to exit."
+        )
+        return
 
-        if input_type == "add_forward_from":
-            success = user_settings.add_forward_from(chat_id)
-            Config.FORWARD_FROM_CHAT_ID = user_settings.get_forward_from()
-            await message.edit(
-                f"✅ Forward from chat {'added' if success else 'already exists'}: `{chat_id}`",
-                reply_markup=KeyboardManager.forward_from_menu(),
+    if state == InputState.FORWARD_FROM:
+        success, msg = settings.add_forward_from(validation_result.cleaned_id)
+        if success:
+            await message.reply(
+                f"{msg}\n\nNow send a destination chat ID, or 'cancel' to exit."
             )
+            await set_user_state(user_id, InputState.FORWARD_TO)
+        else:
+            await message.reply(f"❌ {msg}\nPlease try again or send 'cancel' to exit.")
 
-        elif input_type == "add_forward_to":
-            success = user_settings.add_forward_to(chat_id)
-            Config.FORWARD_TO_CHAT_ID = user_settings.get_forward_to()
-            await message.edit(
-                f"✅ Forward to chat {'added' if success else 'already exists'}: `{chat_id}`",
-                reply_markup=KeyboardManager.forward_to_menu(),
+    elif state == InputState.FORWARD_TO:
+        success, msg = settings.add_forward_to(validation_result.cleaned_id)
+        if success:
+            await clear_user_state(user_id)
+            await message.reply(
+                f"{msg}\n\n✅ Settings configured successfully!\n"
+                "You can now use other commands like /kang"
             )
-
-        elif input_type == "remove_forward_from":
-            success = user_settings.remove_forward_from(chat_id)
-            Config.FORWARD_FROM_CHAT_ID = user_settings.get_forward_from()
-            await message.edit(
-                f"{'✅ Chat removed from forward from list' if success else '❌ Chat not found in forward from list'}: `{chat_id}`",
-                reply_markup=KeyboardManager.forward_from_menu(),
-            )
-
-        elif input_type == "remove_forward_to":
-            success = user_settings.remove_forward_to(chat_id)
-            Config.FORWARD_TO_CHAT_ID = user_settings.get_forward_to()
-            await message.edit(
-                f"{'✅ Chat removed from forward to list' if success else '❌ Chat not found in forward to list'}: `{chat_id}`",
-                reply_markup=KeyboardManager.forward_to_menu(),
-            )
-
-        del WAITING_FOR_INPUT[message.from_user.id]
+        else:
+            await message.reply(f"❌ {msg}\nPlease try again or send 'cancel' to exit.")
 
 
-@User.on_callback_query()
-async def handle_callbacks(client: Client, callback: CallbackQuery):
-    global user_settings
+async def get_user_state(user_id: int) -> Tuple[InputState, bool]:
+    """Get user's current state and whether it's expired"""
+    if user_id not in USER_STATES:
+        return InputState.NONE, False
 
-    if not user_settings and callback.from_user:
-        await initialize_settings(callback.from_user.id)
+    state = USER_STATES[user_id]
+    is_expired = state.is_expired()
 
-    data = callback.data
+    if is_expired:
+        USER_STATES.pop(user_id)
+        return InputState.NONE, True
 
-    if data == "back_to_settings":
-        await callback.message.edit(
-            "🛠 **Bot Settings**\n\nUse the buttons below to configure forwarding settings:",
-            reply_markup=KeyboardManager.settings_menu(),
-        )
+    return state.state, False
 
-    elif data == "forward_from_menu":
-        await callback.message.edit(
-            "📥 **Forward From Settings**\n\nManage channels to forward messages from:",
-            reply_markup=KeyboardManager.forward_from_menu(),
-        )
 
-    elif data == "forward_to_menu":
-        await callback.message.edit(
-            "📤 **Forward To Settings**\n\nManage channels to forward messages to:",
-            reply_markup=KeyboardManager.forward_to_menu(),
-        )
+async def set_user_state(user_id: int, state: InputState):
+    """Set user's current state"""
+    USER_STATES[user_id] = UserState(state)
 
-    elif data == "show_settings":
-        from_chats = user_settings.get_forward_from()
-        to_chats = user_settings.get_forward_to()
 
-        settings_text = "**Current Settings**\n\n"
-        settings_text += "📥 **Forward From:**\n"
-        settings_text += (
-            "\n".join([f"• `{chat_id}`" for chat_id in from_chats])
-            if from_chats
-            else "• None"
-        )
-        settings_text += "\n\n📤 **Forward To:**\n"
-        settings_text += (
-            "\n".join([f"• `{chat_id}`" for chat_id in to_chats])
-            if to_chats
-            else "• None"
-        )
-
-        await callback.message.edit(
-            settings_text, reply_markup=KeyboardManager.settings_menu()
-        )
-
-    elif data in ["add_forward_from", "add_forward_to"]:
-        WAITING_FOR_INPUT[callback.from_user.id] = data
-        await callback.message.edit(
-            "📝 Please send the chat ID (must start with -100):", reply_markup=None
-        )
-
-    elif data in ["remove_forward_from", "remove_forward_to"]:
-        WAITING_FOR_INPUT[callback.from_user.id] = data
-        await callback.message.edit(
-            "📝 Please send the chat ID to remove (must start with -100):",
-            reply_markup=None,
-        )
-
-    elif data == "clear_forward_from":
-        user_settings.clear_forward_from()
-        Config.FORWARD_FROM_CHAT_ID = []
-        await callback.message.edit(
-            "✅ Cleared all forward from channels",
-            reply_markup=KeyboardManager.forward_from_menu(),
-        )
-
-    elif data == "clear_forward_to":
-        user_settings.clear_forward_to()
-        Config.FORWARD_TO_CHAT_ID = []
-        await callback.message.edit(
-            "✅ Cleared all forward to channels",
-            reply_markup=KeyboardManager.forward_to_menu(),
-        )
-
-    elif data == "list_forward_from":
-        chats = user_settings.get_forward_from()
-        text = "📥 **Forward From Channels:**\n\n"
-        text += (
-            "\n".join([f"• `{chat_id}`" for chat_id in chats])
-            if chats
-            else "• No channels added"
-        )
-        await callback.message.edit(
-            text, reply_markup=KeyboardManager.forward_from_menu()
-        )
-
-    elif data == "list_forward_to":
-        chats = user_settings.get_forward_to()
-        text = "📤 **Forward To Channels:**\n\n"
-        text += (
-            "\n".join([f"• `{chat_id}`" for chat_id in chats])
-            if chats
-            else "• No channels added"
-        )
-        await callback.message.edit(
-            text, reply_markup=KeyboardManager.forward_to_menu()
-        )
+async def clear_user_state(user_id: int):
+    """Clear user's current state"""
+    if user_id in USER_STATES:
+        USER_STATES.pop(user_id)
 
 
 print("Bot running...")
