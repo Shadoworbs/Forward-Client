@@ -52,7 +52,7 @@ async def ForwardMessage(
 
         # --- Validation Checks --- #
         checks = [
-            (FilterMessage(message=msg), "Message type not allowed in filters"),
+            (await FilterMessage(message=msg), "Message type not allowed in filters"),
             (
                 await CheckBlockedExt(event=msg) if msg.media else False,
                 "File extension is blocked",
