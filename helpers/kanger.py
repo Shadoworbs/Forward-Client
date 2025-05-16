@@ -48,7 +48,7 @@ async def Kanger(c: Client, m: Message):
             chat_member = await c.get_chat_member(
                 chat_id=chat_id, user_id=(await c.get_me()).id
             )
-            if not chat_member.privileges.can_post_messages:
+            if not chat_member.permissions.can_send_messages:
                 await m.edit(
                     text=f"❌ No permission to send messages in chat `{chat_id}`!"
                 )
@@ -81,7 +81,7 @@ async def Kanger(c: Client, m: Message):
                 )
                 await asyncio.sleep(2)
 
-        await m.edit(text="✅ Mass forward completed successfully!")
+        await m.edit(text=f"✅ Mass forward completed successfully!\n\nBy: {(await c.get_me()).username}")
 
     except UserDeactivatedBan:
         await m.edit(text="❌ Account has been banned! Use an alternative account.")
