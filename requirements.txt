@@ -1,2 +1,7 @@
-pyrofork>=2.0.0
-tgcrypto>=1.2.5
+dotenv==0.9.9
+pyaes==1.6.1
+pymediainfo-pyrofork==6.0.2
+pyrofork==2.3.62
+PySocks==1.7.1
+python-dotenv==1.1.0
+TgCrypto==1.2.5
