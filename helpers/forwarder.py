@@ -90,12 +90,12 @@ async def ForwardMessage(
                     try:
                         chat = await client.get_chat(chat_id)
                         member = await chat.get_member("me")
-                        if not member.permissions.can_send_messages:
-                            await client.send_message(
-                                chat_id="me",
-                                text=f"⛔️ No permission to send messages in {chat.title}",
-                            )
-                            continue
+                        # if not member.permissions.can_send_messages:
+                        #     await client.send_message(
+                        #         chat_id="me",
+                        #         text=f"⛔️ No permission to send messages in {chat.title}",
+                        #     )
+                        #     continue
                     except (ChatAdminRequired, UserBannedInChannel):
                         await client.send_message(
                             chat_id="me",
