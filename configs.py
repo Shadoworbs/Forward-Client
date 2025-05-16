@@ -15,7 +15,7 @@ class Config(object):
     BOT_TOKEN = os.environ.get("BOT_TOKEN", None)
 
     # Filters for Forwards
-    DEFAULT_FILTERS = os.environ.get("DEFAULT_FILTERS", "video document")
+    DEFAULT_FILTERS = os.environ.get("DEFAULT_FILTERS", "")
     FORWARD_FILTERS = list(
         set(x for x in os.environ.get("FORWARD_FILTERS", DEFAULT_FILTERS).split())
     )
