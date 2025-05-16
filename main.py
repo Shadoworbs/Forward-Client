@@ -324,6 +324,47 @@ async def handle_chat_id_input(client: Client, message: Message):
             await message.reply(f"❌ {msg}\nPlease try again or send 'cancel' to exit.")
 
 
+@User.on_message(filters.command(["forward", "fwd"]))
+async def forward_command(client: Client, message: Message):
+    """Handle forward command - forwards a single message"""
+    try:
+        # Initialize settings
+        settings = await initialize_settings(message.from_user.id)
+
+        # Check settings
+        if not await check_settings_required(message, settings):
+            return
+
+        # Check if we have a replied-to message
+        if not message.reply_to_message:
+            await message.reply(
+                "⚠️ Please reply to a message you want to forward with this command."
+            )
+            return
+
+        await message.reply("🔄 Starting forward operation...")
+
+        # Forward the message
+        result = await ForwardMessage(client, message.reply_to_message)
+
+        if result == 400:
+            await message.reply(
+                "❌ Failed to forward message. The message may:\n"
+                "• Be filtered out by content type\n"
+                "• Have a blocked file extension\n"
+                "• Not meet minimum size requirements"
+            )
+        else:
+            await message.reply("✅ Message forwarded successfully!")
+
+    except Exception as e:
+        await message.reply(
+            "❌ Error occurred while forwarding:\n"
+            f"`{str(e)}`\n"
+            "Please try again or contact support if the issue persists."
+        )
+
+
 async def get_user_state(user_id: int) -> Tuple[InputState, bool]:
     """Get user's current state and whether it's expired"""
     if user_id not in USER_STATES:
