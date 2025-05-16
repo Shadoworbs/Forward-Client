@@ -126,11 +126,63 @@ async def start_command(client: Client, message: Message):
     """Handle start and help commands"""
     settings = await initialize_settings(message.from_user.id)
 
-    response = Config.HELP_TEXT
+    # Add reset command to help text
+    help_text = Config.HELP_TEXT.strip()
+    help_text += "\n• `/rs` or `/reset` - Reset all forwarding settings."
+
+    response = help_text
     if not settings.has_required_settings():
         response += "\n\n⚠️ Note: Please configure your forwarding settings using /settings or /bs first!"
 
     await message.reply(response)
+
+
+@User.on_message(filters.command(["viewsettings", "vs"]))
+async def view_settings(client: Client, message: Message):
+    """Handle viewing settings command"""
+    try:
+        settings = await initialize_settings(message.from_user.id)
+
+        if not settings.has_required_settings():
+            await message.reply(
+                "⚠️ No settings configured yet!\n\n"
+                "Use /settings or /bs to configure your forwarding settings."
+            )
+            return
+
+        # Get the settings
+        forward_from = settings.get_forward_from()
+        forward_to = settings.get_forward_to()
+
+        # Format the settings nicely
+        settings_text = "📋 **Current Forwarding Settings**\n\n"
+
+        # Source chats section
+        settings_text += "📤 **Source Chats:**\n"
+        for i, chat_id in enumerate(forward_from, 1):
+            settings_text += f"   {i}. `{chat_id}`\n"
+
+        settings_text += "\n📥 **Destination Chats:**\n"
+        for i, chat_id in enumerate(forward_to, 1):
+            settings_text += f"   {i}. `{chat_id}`\n"
+
+        settings_text += "\n⚙️ **Settings Summary:**\n"
+        settings_text += (
+            f"• Total Source Chats: {len(forward_from)}/{settings.MAX_CHATS}\n"
+        )
+        settings_text += (
+            f"• Total Destination Chats: {len(forward_to)}/{settings.MAX_CHATS}\n"
+        )
+        settings_text += "\n💡 Use /settings to modify these configurations."
+
+        await message.reply(settings_text)
+
+    except Exception as e:
+        await message.reply(
+            "❌ An error occurred while retrieving settings!\n\n"
+            f"Error details: `{str(e)}`\n"
+            "Please try again or contact support if the issue persists."
+        )
 
 
 @User.on_message(filters.command(["settings", "bs", "botsettings"]))
@@ -182,6 +234,39 @@ async def handle_kang_stop(client: Client, message: Message):
     else:  # stop command
         RUN["isRunning"] = False
         await message.edit_text("Stopped Successfully!")
+
+
+@User.on_message(filters.command(["rs", "reset"]))
+async def reset_settings(client: Client, message: Message):
+    """Handle reset settings command"""
+    try:
+        # Get user settings
+        user_id = message.from_user.id
+        settings = await initialize_settings(user_id)
+
+        # Check if there are any settings to reset
+        if not settings.has_required_settings():
+            await message.reply("⚠️ No active settings found to reset!")
+            return
+
+        # Clear both forward from and to lists
+        settings.clear_forward_from()
+        settings.clear_forward_to()
+
+        # Clear any active state
+        await clear_user_state(user_id)
+
+        await message.reply(
+            "🗑️ Settings reset successfully!\n\n"
+            "All forwarding configurations have been cleared. "
+            "Use /settings or /bs to configure new settings."
+        )
+    except Exception as e:
+        await message.reply(
+            "❌ An error occurred while resetting settings!\n\n"
+            f"Error details: {str(e)}\n"
+            "Please try again or contact support if the issue persists."
+        )
 
 
 @User.on_message(
