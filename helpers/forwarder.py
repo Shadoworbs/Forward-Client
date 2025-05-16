@@ -1,8 +1,7 @@
-# (c) @AbirHasan2005
 
 import asyncio
 from configs import Config
-from pyrogram import Client
+from pyrogram.client import Client
 from pyrogram.types import Message
 from pyrogram.errors import FloodWait
 from helpers.filters import FilterMessage
@@ -33,10 +32,16 @@ async def ForwardMessage(client: Client, msg: Message):
                     await msg.forward(Config.FORWARD_TO_CHAT_ID[i])
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                await client.send_message(chat_id="me", text=f"#FloodWait: Stopped Forwarder for `{e.value}s`!")
+                await client.send_message(
+                    chat_id="me",
+                    text=f"#FloodWait: Stopped Forwarder for `{e.value}s`!",
+                )
                 await asyncio.sleep(Config.SLEEP_TIME)
                 await ForwardMessage(client, msg)
             except Exception as err:
-                await client.send_message(chat_id="me", text=f"#ERROR: `{err}`\n\nUnable to Forward Message to `{str(Config.FORWARD_TO_CHAT_ID[i])}`")
+                await client.send_message(
+                    chat_id="me",
+                    text=f"#ERROR: `{err}`\n\nUnable to Forward Message to `{str(Config.FORWARD_TO_CHAT_ID[i])}`",
+                )
     except Exception as err:
         await client.send_message(chat_id="me", text=f"#ERROR: `{err}`")

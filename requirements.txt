@@ -1,3 +1,2 @@
-pyrogram
-TgCrypto
-heroku3
+pyrofork>=2.0.0
+tgcrypto>=1.2.5
