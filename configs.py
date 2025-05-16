@@ -10,15 +10,17 @@ class Config(object):
     API_ID = int(os.environ.get("API_ID"))
     API_HASH = os.environ.get("API_HASH")
     # Get This From @StringSessionGen_Bot
-    STRING_SESSION = os.environ.get("STRING_SESSION")
+    STRING_SESSION = os.environ.get("STRING_SESSION", None)
+    # Get This From @BotFather
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", None)
     # Forward From Chat ID
     FORWARD_FROM_CHAT_ID = [
         int(x.strip())
-        for x in os.environ.get("FORWARD_FROM_CHAT_ID", "-100").split(",")
+        for x in os.environ.get("FORWARD_FROM_CHAT_ID")
     ]
     # Forward To Chat ID
     FORWARD_TO_CHAT_ID = [
-        int(x.strip()) for x in os.environ.get("FORWARD_TO_CHAT_ID", "-100").split(",")
+        int(x.strip()) for x in os.environ.get("FORWARD_TO_CHAT_ID")
     ]
     # Filters for Forwards
     DEFAULT_FILTERS = os.environ.get("DEFAULT_FILTERS", "video document")
@@ -26,7 +28,7 @@ class Config(object):
         set(x for x in os.environ.get("FORWARD_FILTERS", DEFAULT_FILTERS).split())
     )
     BLOCKED_EXTENSIONS = [
-        x.strip() for x in os.environ.get("BLOCKED_EXTENSIONS", "").split(",")
+        x.strip() for x in os.environ.get("BLOCKED_EXTENSIONS", "")
     ]
     MINIMUM_FILE_SIZE = os.environ.get("MINIMUM_FILE_SIZE", None)
     BLOCK_FILES_WITHOUT_EXTENSIONS = bool(

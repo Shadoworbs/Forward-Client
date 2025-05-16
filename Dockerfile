@@ -1,35 +1,36 @@
-FROM ubuntu:20.04
-
-ENV DEBIAN_FRONTEND=noninteractive
+# Stage 1: Build Stage
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
-RUN apt-get update
-RUN echo y | apt-get install locales
-RUN echo y | apt install build-essential
-RUN apt -qq install -y --no-install-recommends \
-    curl \
-    git \
-    gnupg2 \
-    wget \
-RUN set -ex; \
-    apt-get update \
-    && apt-get install -y --no-install-recommends \
-        busybox \
-	git \
-	python3 \
-	python3-dev \
-	python3-pip \
-	python3-lxml \
-	pv \
-	&& apt-get autoclean \
-        && apt-get autoremove \
-        && rm -rf /var/lib/apt/lists/*
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip3 install setuptools wheel yarl multidict
+# Install build dependencies
 COPY requirements.txt .
-RUN pip3 install -r requirements.txt
-RUN dpkg-reconfigure locales
-COPY . /app
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python3", "main.py"]
+# Stage 2: Production Stage
+FROM python:3.12-slim
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+WORKDIR /app
+
+# Copy only necessary files
+COPY configs.py .
+COPY main.py .
+COPY helpers/ ./helpers/
+COPY requirements.txt .
+
+# Create directory for user data
+RUN mkdir -p user_data
+
+# Create non-root user
+RUN useradd -m appuser && chown -R appuser:appuser /app
+USER appuser
+
+CMD ["python", "main.py"]
