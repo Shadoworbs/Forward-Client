@@ -198,7 +198,7 @@ async def settings_command(client: Client, message: Message):
 
     if state != InputState.NONE:
         await message.reply(
-            "You have a settings session in progress. Send 'cancel' to start over."
+            "You have a settings session in progress. Send '`cancel`' to start over."
         )
         return
 
@@ -206,7 +206,7 @@ async def settings_command(client: Client, message: Message):
         "Current Settings:\n"
         f"Source Chats: {', '.join(map(str, settings.get_forward_from()))}\n"
         f"Destination Chats: {', '.join(map(str, settings.get_forward_to()))}\n\n"
-        "Send a source chat ID to start configuration, or 'cancel' to exit."
+        "Send a source chat ID to start configuration, or '`cancel`' to exit."
     )
 
     await message.reply(current_settings)

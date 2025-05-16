@@ -13,7 +13,7 @@ class ValidationResult:
 
 
 class UserSettings:
-    MAX_CHATS = 10  # Maximum number of chats allowed for each direction
+    MAX_CHATS = 5  # Maximum number of chats allowed for each direction
     SETTINGS_VERSION = 1  # For future migrations if needed
 
     def __init__(self, user_id: int):
