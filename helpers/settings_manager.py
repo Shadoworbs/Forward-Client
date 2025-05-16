@@ -68,8 +68,8 @@ class UserSettings:
         try:
             # Remove any whitespace and optional -100 prefix
             cleaned_id = chat_id.strip()
-            if cleaned_id.startswith("-100"):
-                cleaned_id = cleaned_id[4:]
+            # if cleaned_id.startswith("-100"):
+            #     cleaned_id = cleaned_id[4:]
 
             # Convert to int and validate
             chat_id_int = int(cleaned_id)
