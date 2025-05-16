@@ -48,11 +48,11 @@ async def Kanger(c: Client, m: Message):
             chat_member = await c.get_chat_member(
                 chat_id=chat_id, user_id=(await c.get_me()).id
             )
-            if not chat_member.is_member:
-                await m.edit(
-                    text=f"❌ No permission to send messages in chat `{chat_id}`!\nYou must be a member of the chat."
-                )
-                return 400
+            # if not chat_member.permissions.can_pin_messages:
+            #     await m.edit(
+            #         text=f"❌ No permission to send messages in chat `{chat_id}`!\nYou must be an admin with permission to send messages."
+            #     )
+            #     return 400
             chat = await c.get_chat(chat_id)
             await m.edit(
                 text=f"✅ Successfully connected to destination chat `{chat.title}`!"
