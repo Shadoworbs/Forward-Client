@@ -1,0 +1,29 @@
+# Directories to ignore
+# --------------------------------
+.idea
+.vscode
+.DS_Store
+.history
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env.development.local
+.env.test.local
+.venv/
+__pycache__/
+
+
+# Files to ignore
+# --------------------------------
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.egg-info
+*.egg
+*.txt
+.env

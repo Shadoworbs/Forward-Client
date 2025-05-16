@@ -33,7 +33,7 @@ async def Kanger(c: Client, m: Message):
             return 400
     await asyncio.sleep(2)
     await m.edit(text="Trying to Forward Now ...")
-    async for message in c.iter_history(chat_id=Config.FORWARD_FROM_CHAT_ID[0], reverse=True):
+    async for message in c.get_chat_history(chat_id=Config.FORWARD_FROM_CHAT_ID[0]):
         await asyncio.sleep(Config.SLEEP_TIME)
         try:
             try_forward = await ForwardMessage(c, message)
@@ -44,4 +44,4 @@ async def Kanger(c: Client, m: Message):
             break
         except Exception as err:
             await c.send_message(chat_id="me", text=f"#ERROR: `{err}`")
-    await m.edit(text="Channel Files Successfully Kanged!\n\n©️ A Forwarder Userbot by @AbirHasan2005")
+    await m.edit(text="Channel Files Successfully Kanged!\n\n©️ A Forwarder Userbot by @shadoworbs")

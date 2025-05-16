@@ -23,7 +23,7 @@ User = Client(
 )
 
 
-@User.on_message((filters.text | filters.media))
+@User.on_message(filters.text | filters.media)
 async def main(client: Client, message: Message):
     if (-100 in Config.FORWARD_TO_CHAT_ID) or (-100 in Config.FORWARD_FROM_CHAT_ID):
         try:
@@ -38,16 +38,16 @@ async def main(client: Client, message: Message):
         if not RUN["isRunning"]:
             RUN["isRunning"] = True
         await message.edit(
-            text=f"Hi, **{(await client.get_me()).first_name}**!\nThis is a Forwarder Userbot by @shadoworbs",
+            text=f"Hi, **{message.from_user.first_name}**!\nThis is a Forwarder Userbot by @shadoworbs",
             disable_web_page_preview=True)
     elif (message.text == "/stop") and message.from_user.is_self:
         RUN["isRunning"] = False
-        return await message.edit("Userbot Stopped!\n\nSend `!start` to start userbot again.")
+        return await message.edit("Userbot Stopped!\n\nSend `/start` to start userbot again.")
     elif (message.text == "/help") and message.from_user.is_self and RUN["isRunning"]:
         await message.edit(
             text=Config.HELP_TEXT,
             disable_web_page_preview=True)
-    elif message.text and (message.text.startswith("/add_forward_")) and message.from_user.is_self and RUN["isRunning"]:
+    elif message.text and (message.text.startswith("/add")) and message.from_user.is_self and RUN["isRunning"]:
         if len(message.text.split(" ", 1)) < 2:
             return await message.edit(f"{message.text} chat_id")
         for x in message.text.split(" ", 1)[-1].split(" "):
